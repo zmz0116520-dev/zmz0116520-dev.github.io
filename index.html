@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>事件合约 OKX实时BTC 支付率80%</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui, sans-serif;}
+html,body{width:100%;background:#fff;color:#222;overflow-x:hidden;}
+.top-tab{display:flex;padding:12px 15px;border-bottom:1px solid #eee;gap:28px;}
+.tab-item{font-size:17px;color:#999;position:relative;white-space:nowrap;}
+.tab-item.active{color:#000;}
+.tab-item.active::after{content:"";position:absolute;bottom:-12px;left:0;width:100%;height:2px;background:#000;}
+.tab-hot{background:#f53855;color:#fff;font-size:10px;padding:2px 6px;border-radius:3px;margin-left:4px;}
+.coin-head{display:flex;justify-content:space-between;align-items:center;padding:12px 15px;}
+.coin-name{font-size:32px;font-weight:bold;}
+.price-num{font-size:32px;color:#00c266;font-weight:bold;}
+.boll-desc{font-size:13px;color:#666;margin-top:4px;}
+.period-bar{display:flex;padding:8px 15px;gap:16px;border-bottom:1px solid #eee;overflow-x:auto;}
+.period-item{font-size:15px;color:#999;padding:3px 0;white-space:nowrap;}
+.period-item.active{color:#000;border-bottom:2px solid #000;}
+.kline-box{width:100%;height:360px;padding:0 3px;position:relative;}
+#kChart{width:100%;height:100%;background:#fff;display:block;}
+.load-tip{text-align:center;padding:40px 10px;color:#888;font-size:15px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+.param-area{padding:15px;display:grid;grid-template-columns:1fr 1fr;gap:15px;}
+.param-block label{display:block;font-size:15px;color:#666;margin-bottom:7px;}
+.param-input{width:100%;padding:11px 13px;border:1px solid #eee;border-radius:9px;font-size:16px;background:#f7f7f7;}
+.shortcut-row{padding:0 15px 10px;display:flex;justify-content:flex-end;gap:10px;}
+.shortcut-btn{padding:11px 18px;border:1px solid #eee;border-radius:9px;background:#f7f7f7;font-size:16px;}
+.balance-row{padding:9px 15px;font-size:15px;color:#666;display:flex;justify-content:space-between;}
+.rate-tip{font-size:14px;color:#666;padding:0 15px 12px;}
+.buy-wrap{display:flex;padding:0 15px 18px;gap:10px;}
+.buy-btn{flex:1;border:none;color:#fff;padding:18px 0;border-radius:12px;font-size:19px;font-weight:bold;line-height:1.4;}
+.buy-up{background:#00c266;}
+.buy-down{background:#f53855;}
+.pos-title{padding:12px 15px;border-top:8px solid #f5f5f5;font-size:16px;display:flex;gap:22px;}
+.pos-tab{cursor:pointer;position:relative;padding-bottom:8px;color:#888;}
+.pos-tab.active{color:#000;}
+.pos-tab.active::after{content:"";position:absolute;bottom:0;left:0;width:100%;height:2px;background:#000;}
+.pos-panel{padding:0 15px;min-height:80px;}
+.pos-item{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0;}
+.pos-up{color:#00c266;font-weight:bold;font-size:16px;}
+.pos-down{color:#f53855;font-weight:bold;font-size:16px;}
+.color-red{color:#f53855;}
+.color-green{color:#00c266;}
+.color-black{color:#222;}
+.log-title{padding:12px 15px;font-size:16px;}
+.log-box{margin:0 15px 15px;height:80px;overflow-y:auto;background:#f7f7f7;border-radius:9px;padding:10px;font-size:14px;}
+.log-win{color:#00c266;}
+.log-lose{color:#f53855;}
+</style>
+</head>
+<body>
+<div class="top-tab">
+    <div class="tab-item">U本位合约</div>
+    <div class="tab-item active">事件合约</div>
+    <div class="tab-item">TradFi <span class="tab-hot">HOT</span></div>
+    <div class="tab-item">跟单</div>
+</div>
+<div class="coin-head">
+    <div>
+        <div class="coin-name">BTC-USDT ▾</div>
+        <div class="boll-desc" id="bollText">BOLL:-- UB:-- LB:--</div>
+    </div>
+    <div class="price-num" id="nowPrice">--</div>
+</div>
+<div class="period-bar" id="periodBar">
+    <div class="period-item active" data-step="5min">5分钟</div>
+</div>
+<div class="kline-box">
+    <canvas id="kChart"></canvas>
+    <div class="load-tip" id="loadTip">正在连接OKX实时行情...</div>
+</div>
+<div class="param-area">
+    <div class="param-block">
+        <label>合约时间</label>
+        <select class="param-input" id="betTime">
+            <option value="300" selected>5分钟</option>
+        </select>
+    </div>
+    <div class="param-block">
+        <label>数量</label>
+        <input class="param-input" type="number" id="betAmount" value="100" min="3" max="1500">
+    </div>
+</div>
+<div class="shortcut-row">
+    <button class="shortcut-btn" id="btnHalf">1/2</button>
+    <button class="shortcut-btn" id="btnDouble">2x</button>
+</div>
+<div class="balance-row">
+    <span>可用</span>
+    <span id="userBalance">100.00 USDT</span>
+</div>
+<div class="rate-tip">买涨/买跌奖金: 80.0% / 80.0%</div>
+<div class="buy-wrap">
+    <button class="buy-btn buy-up" id="btnUp">↗ 买涨<br>支付率 80.0%</button>
+    <button class="buy-btn buy-down" id="btnDown">↘ 买跌<br>支付率 80.0%</button>
+</div>
+<div class="pos-title">
+    <div class="pos-tab active" data-type="current">当前持仓</div>
+    <div class="pos-tab" data-type="closed">已平仓</div>
+    <div class="pos-tab" data-type="lose">已亏损</div>
+</div>
+<div class="pos-panel">
+    <div class="pos-list" id="posCurrent"></div>
+    <div class="pos-list" id="posClosed" style="display:none;"></div>
+    <div class="pos-list" id="posLose" style="display:none;"></div>
+</div>
+<div class="log-title">交易记录</div>
+<div class="log-box" id="tradeLog"></div>
+
+<script>
+const PAYOUT_RATE = 0.8;
+let balance = 100.00;
+let orders = [];
+let closedOrders = [];
+let loseOrders = [];
+let realPrice = 0;
+let activeTab = "current";
+let chartData = [];
+let ws = null;
+let canvasDom = null;
+let ctxDom = null;
+
+function addLog(text, isWin) {
+    const logWrap = document.getElementById("tradeLog");
+    const line = document.createElement("div");
+    line.className = isWin ? "log-win" : "log-lose";
+    line.innerText = new Date().toLocaleTimeString() + " " + text;
+    logWrap.appendChild(line);
+    logWrap.scrollTop = logWrap.scrollHeight;
+}
+function refreshBalance() {
+    document.getElementById("userBalance").innerText = balance.toFixed(2) + " USDT";
+}
+function formatMs(ms) {
+    if (ms <= 0) return "00:00";
+    let m = Math.floor(ms / 60000).toString().padStart(2,"0");
+    let s = Math.floor((ms % 60000)/1000).toString().padStart(2,"0");
+    return m + ":" + s;
+}
+function maCalc(arr, len) {
+    let res = [];
+    for(let i=0;i<arr.length;i++){
+        if(i < len -1){res.push(null);continue;}
+        let sum = 0;
+        for(let j=0;j<len;j++) sum += arr[i-j].c;
+        res.push(sum / len);
+    }
+    return res;
+}
+function drawChart() {
+    if(!canvasDom || !ctxDom || chartData.length < 20) return;
+    const rect = canvasDom.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvasDom.width = rect.width * dpr;
+    canvasDom.height = rect.height * dpr;
+    ctxDom.setTransform(dpr,0,0,dpr,0,0);
+    const w = rect.width;
+    const h = rect.height;
+    ctxDom.clearRect(0,0,w,h);
+    let allPrice = [];
+    chartData.forEach(d=>{allPrice.push(d.h,d.l);});
+    let minP = Math.min(...allPrice) - 100;
+    let
